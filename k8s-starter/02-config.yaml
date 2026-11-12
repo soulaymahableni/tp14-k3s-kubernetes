@@ -1,0 +1,12 @@
+# ConfigMap : configuration NON sensible, injectée dans whoami avec envFrom.
+# Le Secret whoami-secret, lui, est créé en ligne de commande (jamais dans Git) :
+#   kubectl -n tp14 create secret generic whoami-secret --from-literal=api-key='lab-only-value'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: whoami-config
+  namespace: tp14
+data:
+  APP_ENV: "lab"
+  APP_COLOR: "blue"
+  APP_MESSAGE: "Bonjour depuis K3s"

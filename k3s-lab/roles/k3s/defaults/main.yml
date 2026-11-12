@@ -1,0 +1,11 @@
+# Version de K3s épinglée : même cluster à chaque vagrant up
+k3s_version: "v1.36.6+k3s1"
+
+# "server" ou "agent" (fixé par le playbook)
+k3s_role: server
+
+# Fichier kubeconfig rapatrié sur la VM de lab (à côté du Vagrantfile)
+k3s_kubeconfig_dest: "{{ playbook_dir }}/k3s.yaml"
+
+# Groupe Ansible contenant le server
+k3s_server_group: server

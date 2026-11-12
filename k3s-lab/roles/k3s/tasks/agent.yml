@@ -1,0 +1,17 @@
+- name: Récupérer l'IP et le jeton du server
+  ansible.builtin.set_fact:
+    k3s_server_ip: "{{ hostvars[groups[k3s_server_group][0]].node_ip }}"
+    k3s_join_token: "{{ hostvars[groups[k3s_server_group][0]].k3s_token }}"
+
+- name: Installer K3s (agent)
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io |
+    INSTALL_K3S_VERSION="{{ k3s_version }}"
+    K3S_URL="https://{{ k3s_server_ip }}:6443"
+    K3S_TOKEN="{{ k3s_join_token }}"
+    sh -s - agent
+    --node-ip {{ node_ip }}
+    --flannel-iface {{ k3s_iface }}
+  args:
+    creates: /usr/local/bin/k3s
+  no_log: true   # ne pas afficher le jeton dans la sortie

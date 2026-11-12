@@ -1,0 +1,27 @@
+# Ingress Traefik : whoami.lab.local/ -> whoami, whoami.lab.local/api -> nginx-api
+# Prérequis : 05b-nginx-api.yaml appliqué (TODO : nginx servi sous /api).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: whoami
+  namespace: tp14
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: whoami.lab.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-api
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: whoami
+                port:
+                  number: 80

@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whoami
+  namespace: tp14
+  labels:
+    app: whoami
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: whoami
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # jamais moins de 3 Pods prêts pendant une mise à jour
+      maxSurge: 1         # au plus 1 Pod en plus pendant la mise à jour
+  template:
+    metadata:
+      labels:
+        app: whoami
+    spec:
+      containers:
+        - name: whoami
+          image: traefik/whoami:v1.10.0
+          args: ["--port", "8080"]
+          ports:
+            - name: http
+              containerPort: 8080
+
+          # Partie 4 : ConfigMap (toutes les clés) + une clé du Secret.
+          # optional: true -> le Deployment démarre même avant la Partie 4.
+          envFrom:
+            - configMapRef:
+                name: whoami-config
+                optional: true
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: whoami-secret
+                  key: api-key
+                  optional: true
+
+          # Partie 5 : santé
+          readinessProbe:          # pas prêt -> retiré des endpoints du Service
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:           # en échec -> conteneur redémarré (RESTARTS +1)
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+
+          # Partie 5 : ressources (les requests servent aussi au HPA)
+          resources:
+            requests:
+              cpu: 20m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

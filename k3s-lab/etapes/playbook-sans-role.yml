@@ -1,0 +1,79 @@
+# Étape 1 de la Partie 1 : TODO du playbook complétés, AVANT la transformation en rôle.
+# Pour l'utiliser : cp etapes/playbook-sans-role.yml playbook.yml
+
+- name: K3s server
+  hosts: server
+  become: true
+  vars:
+    k3s_version: "v1.36.6+k3s1"
+  tasks:
+    - name: Interface du réseau privé
+      ansible.builtin.set_fact:
+        k3s_iface: >-
+          {{ ansible_facts['interfaces']
+             | map('regex_replace', '-', '_')
+             | map('extract', ansible_facts)
+             | selectattr('ipv4', 'defined')
+             | selectattr('ipv4.address', 'equalto', node_ip)
+             | map(attribute='device') | first }}
+
+    - name: TODO 1 - Installer le server (idempotent)
+      ansible.builtin.shell: >
+        curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -s - server
+        --node-ip {{ node_ip }} --tls-san {{ node_ip }}
+        --flannel-iface {{ k3s_iface }} --write-kubeconfig-mode 644
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Attendre le jeton
+      ansible.builtin.wait_for:
+        path: /var/lib/rancher/k3s/server/node-token
+
+    - name: TODO 2 - Lire le jeton (slurp)
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: token_raw
+
+    - name: Mémoriser le jeton
+      ansible.builtin.set_fact:
+        k3s_token: "{{ token_raw.content | b64decode | trim }}"
+
+    - name: TODO 3 - Lire le kubeconfig
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/k3s.yaml
+      register: kubeconfig
+
+    - name: TODO 3 - Rapatrier k3s.yaml avec l'IP du server
+      ansible.builtin.copy:
+        content: "{{ kubeconfig.content | b64decode | replace('127.0.0.1', node_ip) }}"
+        dest: "{{ playbook_dir }}/k3s.yaml"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+
+- name: K3s agents
+  hosts: agents
+  become: true
+  vars:
+    k3s_version: "v1.36.6+k3s1"
+    server: "{{ groups['server'][0] }}"
+  tasks:
+    - name: Interface du réseau privé
+      ansible.builtin.set_fact:
+        k3s_iface: >-
+          {{ ansible_facts['interfaces']
+             | map('regex_replace', '-', '_')
+             | map('extract', ansible_facts)
+             | selectattr('ipv4', 'defined')
+             | selectattr('ipv4.address', 'equalto', node_ip)
+             | map(attribute='device') | first }}
+
+    - name: TODO 2 - Installer l'agent avec K3S_URL et K3S_TOKEN
+      ansible.builtin.shell: >
+        curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}"
+        K3S_URL="https://{{ hostvars[server].node_ip }}:6443"
+        K3S_TOKEN="{{ hostvars[server].k3s_token }}"
+        sh -s - agent --node-ip {{ node_ip }} --flannel-iface {{ k3s_iface }}
+      args:
+        creates: /usr/local/bin/k3s
+      no_log: true

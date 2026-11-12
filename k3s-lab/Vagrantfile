@@ -1,0 +1,45 @@
+# -*- mode: ruby -*-
+# Cluster K3s : 1 server + 1 agent. Ansible est lancé UNE seule fois,
+# après la dernière VM, sur tout le cluster (ansible.limit = "all").
+#
+# Défi : ajouter un nœud = ajouter une ligne dans NODES, rien d'autre.
+
+NODES = [
+  { name: "k3s-server", ip: "192.168.56.10", role: "server", cpus: 2, memory: 2048 },
+  { name: "k3s-agent1", ip: "192.168.56.11", role: "agent",  cpus: 2, memory: 2048 },
+  # { name: "k3s-agent2", ip: "192.168.56.12", role: "agent",  cpus: 1, memory: 1536 },
+]
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+  config.vm.box_check_update = false
+  config.ssh.insert_key = true
+
+  NODES.each_with_index do |node, index|
+    config.vm.define node[:name] do |machine|
+      machine.vm.hostname = node[:name]
+      machine.vm.network "private_network", ip: node[:ip]
+
+      machine.vm.provider "virtualbox" do |vb|
+        vb.name   = "tp14-#{node[:name]}"
+        vb.cpus   = node[:cpus]
+        vb.memory = node[:memory]
+        vb.linked_clone = true
+      end
+
+      # Ansible seulement sur la dernière VM, pour tout le cluster
+      if index == NODES.size - 1
+        machine.vm.provision "ansible" do |ansible|
+          ansible.playbook = "playbook.yml"
+          ansible.limit    = "all"
+          ansible.compatibility_mode = "2.0"
+          ansible.groups = {
+            "server" => NODES.select { |n| n[:role] == "server" }.map { |n| n[:name] },
+            "agents" => NODES.select { |n| n[:role] == "agent" }.map { |n| n[:name] },
+          }
+          ansible.host_vars = NODES.to_h { |n| [n[:name], { "node_ip" => n[:ip] }] }
+        end
+      end
+    end
+  end
+end

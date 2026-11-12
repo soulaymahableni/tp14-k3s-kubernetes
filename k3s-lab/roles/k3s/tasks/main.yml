@@ -1,0 +1,20 @@
+# Interface réseau qui porte node_ip (eth1/enp0s8 sur VirtualBox).
+# Indispensable : eth0 (NAT) a la même IP 10.0.2.15 sur toutes les VM,
+# flannel doit donc utiliser le réseau privé.
+- name: Trouver l'interface du réseau privé
+  ansible.builtin.set_fact:
+    k3s_iface: >-
+      {{ ansible_facts['interfaces']
+         | map('regex_replace', '-', '_')
+         | map('extract', ansible_facts)
+         | selectattr('ipv4', 'defined')
+         | selectattr('ipv4.address', 'equalto', node_ip)
+         | map(attribute='device') | first }}
+
+- name: Installer le server
+  ansible.builtin.include_tasks: server.yml
+  when: k3s_role == "server"
+
+- name: Installer l'agent
+  ansible.builtin.include_tasks: agent.yml
+  when: k3s_role == "agent"

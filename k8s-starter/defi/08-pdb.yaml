@@ -1,0 +1,12 @@
+# Défi : au moins 1 Pod whoami doit toujours rester disponible.
+# Un "kubectl drain" qui évincerait le dernier Pod est bloqué (Cannot evict pod ...).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: whoami
+  namespace: tp14
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: whoami

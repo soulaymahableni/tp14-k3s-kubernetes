@@ -1,0 +1,14 @@
+# Kubeconfig : donne un accès admin au cluster
+k3s.yaml
+**/k3s.yaml
+kubeconfig*
+# Vagrant
+.vagrant/
+**/.vagrant/
+*.log
+# Secrets éventuels
+*secret*.yaml
+!k8s-starter/**/*.yaml
+.env
+# kubectl
+kubectl

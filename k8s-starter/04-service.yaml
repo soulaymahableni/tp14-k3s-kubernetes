@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami
+  namespace: tp14
+spec:
+  type: ClusterIP
+  selector:
+    app: whoami          # TODO complété : doit correspondre aux labels des Pods
+  ports:
+    - name: http
+      port: 80
+      targetPort: http   # port nommé du conteneur (8080)

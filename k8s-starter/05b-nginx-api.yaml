@@ -1,0 +1,74 @@
+# TODO de la Partie 3 : Deployment + Service nginx servi sous /api.
+# L'Ingress ne réécrit pas le chemin : nginx reçoit /api et y répond lui-même.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-api-conf
+  namespace: tp14
+data:
+  default.conf: |
+    server {
+      listen 80;
+      default_type application/json;
+      location /api {
+        return 200 '{"service":"nginx-api","pod":"$hostname","path":"$request_uri"}\n';
+      }
+      location / {
+        return 404 '{"error":"not found"}\n';
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-api
+  namespace: tp14
+  labels:
+    app: nginx-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-api
+  template:
+    metadata:
+      labels:
+        app: nginx-api
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/nginx/conf.d
+          readinessProbe:
+            httpGet:
+              path: /api
+              port: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: conf
+          configMap:
+            name: nginx-api-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-api
+  namespace: tp14
+spec:
+  selector:
+    app: nginx-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

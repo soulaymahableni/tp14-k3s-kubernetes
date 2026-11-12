@@ -1,0 +1,19 @@
+# Version finale : le playbook appelle le rôle k3s.
+# (La version "tout dans le playbook", avant transformation en rôle,
+#  est dans etapes/playbook-sans-role.yml.)
+
+- name: K3s server
+  hosts: server
+  become: true
+  roles:
+    - role: k3s
+      vars:
+        k3s_role: server
+
+- name: K3s agents
+  hosts: agents
+  become: true
+  roles:
+    - role: k3s
+      vars:
+        k3s_role: agent
